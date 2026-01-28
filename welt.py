@@ -84,7 +84,7 @@ if video_file:
 
     with col1:
         # Using Markdown header instead of st.info box for better style
-        st.markdown("Original Source") 
+        st.markdown("###Original Source") 
         st.video(video_file)
 
     with col2:
