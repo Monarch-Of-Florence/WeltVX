@@ -1,0 +1,7 @@
+[theme]
+base = "dark"
+primaryColor = "#E50914"            # "Netflix Red" for buttons/accents
+backgroundColor = "#000000"         # Pure Black background
+secondaryBackgroundColor = "#141414" # Dark Grey for inputs/boxes
+textColor = "#FFFFFF"
+font = "sans serif"
