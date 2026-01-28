@@ -64,11 +64,22 @@ st.markdown("*The Multimodal AI Subtitle Agent (Powered by Gemini 3)*")
 video_file = st.file_uploader("Upload Video (Max 2GB)", type=["mp4", "mov", "avi", "webm"])
 
 if video_file:
-    # 1. Save File Locally
+    # 1. NEW: Zombie Subtitle Fix (Clears old SRTs on new upload)
+    if "last_video_name" not in st.session_state:
+        st.session_state["last_video_name"] = ""
+
+    if video_file.name != st.session_state["last_video_name"]:
+        # New video detected! Clean up old files
+        if os.path.exists("subtitles.srt"):
+            os.remove("subtitles.srt")
+        st.session_state["last_video_name"] = video_file.name
+        st.rerun() # Refresh app to clear the player
+
+    # 2. Save File Locally
     with open("temp_video.mp4", "wb") as f:
         f.write(video_file.getbuffer())
 
-    # 2. Layout
+    # 3. Layout
     col1, col2 = st.columns([2, 1])
 
     with col1:
@@ -80,7 +91,7 @@ if video_file:
         st.markdown("### ⚙️ Control Deck")
         language = st.selectbox("Target Language", ["English", "Hindi", "Spanish", "Japanese", "German"])
         
-        # --- NEW CONTEXT SWITCH ---
+        # --- CONTEXT SWITCH ---
         include_sfx = st.checkbox(
             "Include Context & Sound Effects (SDH)", 
             value=False, 
@@ -92,7 +103,7 @@ if video_file:
                 st.error("❌ API Key missing! Check your .env file.")
                 st.stop()
             
-            # 3. Call The Engine
+            # 4. Call The Engine
             with st.status("🚀 Launching Welt Engine...", expanded=True) as status:
                 status.write("☁️ Uploading to Gemini Secure Cloud...")
                 
