@@ -77,7 +77,7 @@ if video_file:
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        st.markdown("### Original Source") 
+        st.markdown("### 🎞️ Original Source") 
         # Video Player with Dynamic Start Time for Chapters
         subs_path = "subtitles.srt" if os.path.exists("subtitles.srt") else None
         st.video(video_file, subtitles=subs_path, start_time=st.session_state.video_start_time)
@@ -85,6 +85,7 @@ if video_file:
     with col2:
         st.markdown("### ⚙️ Control Deck")
         
+        # SCENARIO A: No Subtitles Yet (Initial Generation)
         if not os.path.exists("subtitles.srt"):
             language = st.selectbox("Target Language", ["English", "Hindi", "Spanish", "Japanese", "German"])
             
@@ -115,10 +116,22 @@ if video_file:
                         with open("subtitles.srt", "w", encoding="utf-8") as f: f.write(final_srt)
                         status.update(label="Done!", state="complete", expanded=False)
                         st.rerun()
+        
+        # SCENARIO B: Subtitles Exist (Active Mode)
         else:
             st.success("✅ Subtitles Active")
             
-            # --- SMART CHAPTERS ---
+            # --- NEW FEATURE: Add Chapters Later ---
+            if not st.session_state.chapters:
+                if st.button("➕ Add Smart Chapters"):
+                     if not api_key: st.error("❌ API Key missing!"); st.stop()
+                     with st.status("📑 Analyzing Scenes...", expanded=True) as status:
+                         st.session_state.chapters = weltengine.generate_smart_chapters(api_key, "temp_video.mp4")
+                         status.update(label="Chapters Added!", state="complete", expanded=False)
+                         st.rerun()
+            # ---------------------------------------
+
+            # --- SMART CHAPTERS DISPLAY ---
             if st.session_state.chapters:
                 st.markdown("### 📑 Smart Chapters")
                 for timestamp, title in st.session_state.chapters:
