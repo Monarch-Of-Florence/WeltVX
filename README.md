@@ -1,8 +1,8 @@
-# 🌏 Welt VX (Visual Experience)
+# Welt VX (Visual Experience)
 
 ### The Multimodal Localization Agent powered by Gemini 3.
 
-![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
+![Python](https://img.shields.io/badge/Python-3.10%2B-green)
 ![Gemini](https://img.shields.io/badge/AI-Gemini_3_Flash-orange)
 ![Streamlit](https://img.shields.io/badge/UI-Streamlit_Cinema-red)
 
