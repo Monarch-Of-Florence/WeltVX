@@ -55,8 +55,9 @@ cd welt-vx
 pip install -r requirements.txt
 ```
 **3. Set up Gemini 3 API Key in .env file**
+```bash
 GEMINI_API_KEY=your_gemini_3_api_key_here
-
+```
 **4. Run the Streamlit app**
 ```bash
 streamlit run app.py
