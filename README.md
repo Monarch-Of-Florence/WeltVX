@@ -49,14 +49,15 @@ The project follows a **State-Machine Architecture** built on Streamlit:
 ```bash
 git clone [https://github.com/Monarch-Of-Florence/WeltVX]
 cd welt-vx
-
+```
 **2. Install dependencies**
 ```bash
 pip install -r requirements.txt
-
+```
 **3. Set up Gemini 3 API Key in .env file**
 GEMINI_API_KEY=your_gemini_3_api_key_here
 
 **4. Run the Streamlit app**
 ```bash
 streamlit run app.py
+```
