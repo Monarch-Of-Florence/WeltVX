@@ -77,7 +77,7 @@ if video_file:
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        st.markdown("### 🎞️ Original Source") 
+        st.markdown("### Your Video") 
         # Video Player with Dynamic Start Time for Chapters
         subs_path = "subtitles.srt" if os.path.exists("subtitles.srt") else None
         st.video(video_file, subtitles=subs_path, start_time=st.session_state.video_start_time)
