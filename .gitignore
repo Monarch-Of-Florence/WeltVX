@@ -206,3 +206,11 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 .vs/
+
+# --- Custom Hackathon Exclusions ---
+.env
+temp_video.mp4
+subtitles.srt
+__pycache__/
+*.pyc
+.streamlit/
