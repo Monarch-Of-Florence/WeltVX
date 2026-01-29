@@ -47,7 +47,7 @@ The project follows a **State-Machine Architecture** built on Streamlit:
 
 **1. Clone the repository**
 ```bash
-git clone [https://github.com/YOUR_USERNAME/welt-vx.git](https://github.com/YOUR_USERNAME/welt-vx.git)
+git clone [https://github.com/Monarch-Of-Florence/WeltVX]
 cd welt-vx
 
 **2. Install dependencies**
