@@ -6,13 +6,30 @@ from PIL import Image
 import weltengine 
 
 # --- SETUP ---
+load_dotenv()
 
-# New "Cloud-Ready" way
-if "GEMINI_API_KEY" in st.secrets:
-    api_key = st.secrets["GEMINI_API_KEY"] # Works on Cloud
-else:
-    api_key = os.getenv("GEMINI_API_KEY") # Works on Localhost
+api_key = None
 
+# 1. Try loading from local .env file first
+api_key = os.getenv("GEMINI_API_KEY")
+
+# 2. If not found locally, try Streamlit Cloud Secrets
+if not api_key:
+    try:
+        # This will only work on Streamlit Cloud
+        api_key = st.secrets["GEMINI_API_KEY"]
+    except FileNotFoundError:
+        # This ignores the error if running locally without secrets.toml
+        pass
+    except Exception:
+        pass
+
+# 3. Final Check
+if not api_key:
+    st.error("No API Key found! Please set GEMINI_API_KEY in .env or Streamlit Secrets.")
+    st.stop()
+
+# Icon setup (Keep existing)
 if os.path.exists("welt_icon.png"):
     icon = Image.open("welt_icon.png")
 else:
