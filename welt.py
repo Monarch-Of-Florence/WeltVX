@@ -6,8 +6,12 @@ from PIL import Image
 import weltengine 
 
 # --- SETUP ---
-load_dotenv()
-api_key = os.getenv("GEMINI_API_KEY")
+
+# New "Cloud-Ready" way
+if "GEMINI_API_KEY" in st.secrets:
+    api_key = st.secrets["GEMINI_API_KEY"] # Works on Cloud
+else:
+    api_key = os.getenv("GEMINI_API_KEY") # Works on Localhost
 
 if os.path.exists("welt_icon.png"):
     icon = Image.open("welt_icon.png")
