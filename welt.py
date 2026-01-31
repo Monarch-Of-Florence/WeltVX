@@ -202,26 +202,38 @@ if start_processing:
                 st.session_state.video_start_time = 0
                 st.rerun()
 
-# --- VX ASSISTANT SIDEBAR ---
-if os.path.exists("subtitles.srt"):
+# --- VX ASSISTANT SIDEBAR (UPDATED) ---
+# Show sidebar as soon as a video is loaded, not just when subtitles exist
+if os.path.exists("temp_video.mp4"):
     with st.sidebar:
         st.markdown("### 🤖 VX Assistant")
         st.caption("I can see the video! Ask me questions or tell me to fix errors.")
         st.divider()
 
+        # Display Chat History
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]): st.markdown(msg["content"])
 
+        # Chat Input
         if user_input := st.chat_input("Ex: 'What is he holding?' OR 'Fix typo at 00:05'"):
             st.session_state.messages.append({"role": "user", "content": user_input})
             with st.chat_message("user"): st.markdown(user_input)
 
             with st.chat_message("assistant"):
                 with st.status("🧠 Analyzing...", expanded=True) as status:
-                    with open("subtitles.srt", "r", encoding="utf-8") as f: current_srt = f.read()
                     
+                    # SAFE READ: Handle case where subtitles don't exist yet
+                    current_srt = ""
+                    if os.path.exists("subtitles.srt"):
+                        with open("subtitles.srt", "r", encoding="utf-8") as f: 
+                            current_srt = f.read()
+                    else:
+                        current_srt = "(No subtitles generated yet)"
+                    
+                    # Call Engine
                     ai_response = weltengine.vx_assistant_fix(api_key, "temp_video.mp4", current_srt, user_input)
                     
+                    # LOGIC: Check if it's a FIX (Patch) or a QUESTION (Answer)
                     if ai_response.startswith("PATCH:"):
                         clean_srt = weltengine.clean_and_repair_srt(ai_response)
                         if "Error" in clean_srt:
@@ -238,6 +250,7 @@ if os.path.exists("subtitles.srt"):
                         status.update(label="Answer Ready", state="complete", expanded=False)
                     
                     else:
+                        # Fallback for general conversation
                         final_msg = ai_response
                         status.update(label="Response Received", state="complete")
                 
