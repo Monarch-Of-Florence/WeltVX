@@ -74,34 +74,63 @@ if "video_start_time" not in st.session_state: st.session_state.video_start_time
 st.title("Welt VX")
 st.markdown("*The Multimodal AI Subtitle Agent (Powered by Gemini 3)*")
 
-# --- MAIN APP ---
-video_file = st.file_uploader("Upload Video (Max 2GB)", type=["mp4", "mov", "avi", "webm"])
+# --- MAIN APP (UPDATED WITH DEMO MODE) ---
+st.subheader("Upload Video")
 
-if video_file:
-    # 1. ZOMBIE FIX & RESET
+# 1. Standard Upload
+uploaded_file = st.file_uploader("Drag and drop file here (Max 2GB)", type=["mp4", "mov", "avi", "webm"])
+
+# 2. "Use Demo" Checkbox (Only appears if file exists on disk)
+demo_path = "temp_video.mp4"
+use_demo = False
+if os.path.exists(demo_path):
+    use_demo = st.checkbox("Or use the pre-loaded Demo Video (Fastest)")
+else:
+    st.info("ℹ️ Upload a video once to enable the demo feature.")
+
+# 3. Determine if we should proceed
+start_processing = False
+current_filename = ""
+
+if uploaded_file:
+    start_processing = True
+    current_filename = uploaded_file.name
+elif use_demo:
+    start_processing = True
+    current_filename = "temp_video.mp4"
+
+# 4. Main Logic
+if start_processing:
+    # A. ZOMBIE FIX & RESET
     if "last_video_name" not in st.session_state:
         st.session_state["last_video_name"] = ""
 
-    if video_file.name != st.session_state["last_video_name"]:
+    if current_filename != st.session_state["last_video_name"]:
         if os.path.exists("subtitles.srt"): os.remove("subtitles.srt")
         st.session_state.messages = [] 
         st.session_state.chapters = [] 
         st.session_state.video_start_time = 0 
-        st.session_state["last_video_name"] = video_file.name
+        st.session_state["last_video_name"] = current_filename
         st.rerun()
 
-    # 2. Save Video
-    with open("temp_video.mp4", "wb") as f:
-        f.write(video_file.getbuffer())
+    # B. Save Video (Only if it's a NEW upload)
+    if uploaded_file:
+        with open("temp_video.mp4", "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        st.toast(f"✅ Uploaded: {uploaded_file.name}")
+    elif use_demo:
+        st.toast("✅ Using pre-loaded demo video")
 
-    # 3. Layout
+    # C. Layout
     col1, col2 = st.columns([2, 1])
 
     with col1:
         st.markdown("### Your Video") 
         # Video Player with Dynamic Start Time for Chapters
         subs_path = "subtitles.srt" if os.path.exists("subtitles.srt") else None
-        st.video(video_file, subtitles=subs_path, start_time=st.session_state.video_start_time)
+        
+        # KEY FIX: We load the file path string, not the upload object
+        st.video("temp_video.mp4", subtitles=subs_path, start_time=st.session_state.video_start_time)
 
     with col2:
         st.markdown("### ⚙️ Control Deck")
