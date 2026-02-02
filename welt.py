@@ -211,7 +211,7 @@ if os.path.exists("temp_video.mp4"):
         st.divider()
 
         # --- 🛡️ NEW: CONTENT SAFETY SCANNER ---
-        with st.expander("🛡️ Content Safety Scan", expanded=False):
+        with st.expander("Content Safety Scan", expanded=False):
             st.caption("Check for specific content (e.g., spiders, blood, flashing lights).")
             safety_tag = st.text_input("Tag to search for:", placeholder="Ex: Spiders")
             
