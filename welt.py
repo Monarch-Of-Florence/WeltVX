@@ -202,13 +202,42 @@ if start_processing:
                 st.session_state.video_start_time = 0
                 st.rerun()
 
-# --- VX ASSISTANT SIDEBAR (UPDATED) ---
-# Show sidebar as soon as a video is loaded, not just when subtitles exist
+# --- VX ASSISTANT SIDEBAR (FINAL VERSION) ---
+# Show sidebar as soon as a video is loaded
 if os.path.exists("temp_video.mp4"):
     with st.sidebar:
         st.markdown("### 🤖 VX Assistant")
-        st.caption("I can see the video! Ask me questions or tell me to fix errors.")
+        st.caption("I can see the video! Ask me questions or use the scanner.")
         st.divider()
+
+        # --- 🛡️ NEW: CONTENT SAFETY SCANNER ---
+        with st.expander("🛡️ Content Safety Scan", expanded=False):
+            st.caption("Check for specific content (e.g., spiders, blood, flashing lights).")
+            safety_tag = st.text_input("Tag to search for:", placeholder="Ex: Spiders")
+            
+            if st.button("Run Safety Scan"):
+                if safety_tag:
+                    # 1. Add User's "Action" to chat history
+                    prompt = f"Scan this video strictly for the presence of '{safety_tag}'. If present, provide timestamps. If not, confirm it is safe."
+                    st.session_state.messages.append({"role": "user", "content": f"🔍 SCAN REQUEST: {safety_tag}"})
+                    
+                    # 2. Trigger the Assistant (Displaying a loading status)
+                    with st.status(f"🕵️ Scanning for '{safety_tag}'...", expanded=True):
+                         # Safe read of subtitles if they exist
+                        current_srt = ""
+                        if os.path.exists("subtitles.srt"):
+                            with open("subtitles.srt", "r", encoding="utf-8") as f: current_srt = f.read()
+                        
+                        # Call Engine
+                        response = weltengine.vx_assistant_fix(api_key, "temp_video.mp4", current_srt, prompt)
+                        st.write(response)
+
+                    # 3. Save result and refresh
+                    st.session_state.messages.append({"role": "assistant", "content": response})
+                    st.rerun()
+        
+        st.divider()
+        # ---------------------------------------
 
         # Display Chat History
         for msg in st.session_state.messages:
