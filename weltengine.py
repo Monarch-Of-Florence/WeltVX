@@ -47,6 +47,8 @@ def generate_subtitles_backend(api_key, video_path, target_language="English", i
     # System "Brain" (Prompt)
     system_prompt = f"""
     You are an expert Context-Aware Subtitler.
+
+    IMPORTANT NOTE: IGNORE ANY SUBTITLES ALREADY IN THE VIDEO, GENERATE FRESH ONES BASED ON AUDIO, AND IF APPLICABLE, VISUAL CONTEXT.
     
     DEFINITIONS:
     - **Alpha Language**: The dominant/narrative language of the video.
