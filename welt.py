@@ -19,7 +19,6 @@ if not api_key:
         # This will only work on Streamlit Cloud
         api_key = st.secrets["GEMINI_API_KEY"]
     except FileNotFoundError:
-        # This ignores the error if running locally without secrets.toml
         pass
     except Exception:
         pass
@@ -29,7 +28,7 @@ if not api_key:
     st.error("No API Key found! Please set GEMINI_API_KEY in .env or Streamlit Secrets.")
     st.stop()
 
-# Icon setup (Keep existing)
+# Icon setup
 if os.path.exists("welt_icon.png"):
     icon = Image.open("welt_icon.png")
 else:
@@ -74,54 +73,59 @@ if "video_start_time" not in st.session_state: st.session_state.video_start_time
 st.title("Welt VX")
 st.markdown("*The Multimodal AI Subtitle Agent (Powered by Gemini 3)*")
 
-# --- MAIN APP (UPDATED WITH DEMO MODE) ---
+# --- MAIN APP ---
 st.subheader("Upload Video")
 
-# 1. Standard Upload
+# 1. Define File Paths
+MASTER_DEMO_PATH = "master_demo.mp4"  # The permanent file (Must be in repo)
+WORKING_VIDEO_PATH = "temp_video.mp4" # The active processing file
+
+# 2. Standard Upload
 uploaded_file = st.file_uploader("Drag and drop file here (Max 2GB)", type=["mp4", "mov", "avi", "webm"])
 
-# 2. "Use Demo" Checkbox (Only appears if file exists on disk)
-demo_path = "temp_video.mp4"
+# 3. "Use Demo" Checkbox (Only if master file exists)
 use_demo = False
-if os.path.exists(demo_path):
+if os.path.exists(MASTER_DEMO_PATH):
     use_demo = st.checkbox("Or use the pre-loaded Demo Video (Fastest)")
 else:
-    st.info("ℹ️ Upload a video once to enable the demo feature.")
+    st.info(f"ℹ️ To use Demo Mode, rename your demo video to '{MASTER_DEMO_PATH}' and upload it to the project folder.")
 
-# 3. Determine if we should proceed
+# 4. Determine Active Source
 start_processing = False
-current_filename = ""
+active_video_source = None
+current_video_id = ""
 
 if uploaded_file:
     start_processing = True
-    current_filename = uploaded_file.name
+    # Save the upload to the WORKING path
+    with open(WORKING_VIDEO_PATH, "wb") as f:
+        f.write(uploaded_file.getbuffer())
+    active_video_source = WORKING_VIDEO_PATH
+    current_video_id = uploaded_file.name
+    st.toast(f"✅ Uploaded: {uploaded_file.name}")
+
 elif use_demo:
     start_processing = True
-    current_filename = "temp_video.mp4"
+    # Just point to the MASTER path (Don't overwrite it!)
+    active_video_source = MASTER_DEMO_PATH
+    current_video_id = "Demo_Video_Master"
+    st.toast("✅ Using Master Demo Video")
 
-# 4. Main Logic
-if start_processing:
+# 5. Main Logic
+if start_processing and active_video_source:
     # A. ZOMBIE FIX & RESET
-    if "last_video_name" not in st.session_state:
-        st.session_state["last_video_name"] = ""
+    if "last_video_id" not in st.session_state:
+        st.session_state["last_video_id"] = ""
 
-    if current_filename != st.session_state["last_video_name"]:
+    if current_video_id != st.session_state["last_video_id"]:
         if os.path.exists("subtitles.srt"): os.remove("subtitles.srt")
         st.session_state.messages = [] 
         st.session_state.chapters = [] 
         st.session_state.video_start_time = 0 
-        st.session_state["last_video_name"] = current_filename
+        st.session_state["last_video_id"] = current_video_id
         st.rerun()
 
-    # B. Save Video (Only if it's a NEW upload)
-    if uploaded_file:
-        with open("temp_video.mp4", "wb") as f:
-            f.write(uploaded_file.getbuffer())
-        st.toast(f"✅ Uploaded: {uploaded_file.name}")
-    elif use_demo:
-        st.toast("✅ Using pre-loaded demo video")
-
-    # C. Layout
+    # B. Layout
     col1, col2 = st.columns([2, 1])
 
     with col1:
@@ -129,8 +133,8 @@ if start_processing:
         # Video Player with Dynamic Start Time for Chapters
         subs_path = "subtitles.srt" if os.path.exists("subtitles.srt") else None
         
-        # KEY FIX: We load the file path string, not the upload object
-        st.video("temp_video.mp4", subtitles=subs_path, start_time=st.session_state.video_start_time)
+        # KEY FIX: Using the dynamic variable
+        st.video(active_video_source, subtitles=subs_path, start_time=st.session_state.video_start_time)
 
     with col2:
         st.markdown("### ⚙️ Control Deck")
@@ -149,12 +153,13 @@ if start_processing:
                 with st.status("🚀 Launching Welt Engine...", expanded=True) as status:
                     # A. Subtitles
                     status.write("☁️ Uploading & Analyzing Video...")
-                    raw_srt = weltengine.generate_subtitles_backend(api_key, "temp_video.mp4", language, include_sfx)
+                    # KEY FIX: Pass active_video_source
+                    raw_srt = weltengine.generate_subtitles_backend(api_key, active_video_source, language, include_sfx)
                     
                     # B. Chapters
                     if include_chapters:
                         status.write("📑 Generating Smart Chapters...")
-                        st.session_state.chapters = weltengine.generate_smart_chapters(api_key, "temp_video.mp4")
+                        st.session_state.chapters = weltengine.generate_smart_chapters(api_key, active_video_source)
                     
                     # C. Validation
                     if "Error" in raw_srt:
@@ -176,7 +181,7 @@ if start_processing:
                 if st.button("➕ Add Smart Chapters"):
                      if not api_key: st.error("❌ API Key missing!"); st.stop()
                      with st.status("📑 Analyzing Scenes...", expanded=True) as status:
-                         st.session_state.chapters = weltengine.generate_smart_chapters(api_key, "temp_video.mp4")
+                         st.session_state.chapters = weltengine.generate_smart_chapters(api_key, active_video_source)
                          status.update(label="Chapters Added!", state="complete", expanded=False)
                          st.rerun()
             # ---------------------------------------
@@ -202,16 +207,16 @@ if start_processing:
                 st.session_state.video_start_time = 0
                 st.rerun()
 
-# --- VX ASSISTANT SIDEBAR (FINAL VERSION) ---
+# --- VX ASSISTANT SIDEBAR (UPDATED) ---
 # Show sidebar as soon as a video is loaded
-if os.path.exists("temp_video.mp4"):
+if active_video_source:
     with st.sidebar:
         st.markdown("### 🤖 VX Assistant")
         st.caption("I can see the video! Ask me questions or use the scanner.")
         st.divider()
 
         # --- 🛡️ NEW: CONTENT SAFETY SCANNER ---
-        with st.expander("Content Safety Scan", expanded=False):
+        with st.expander("🛡️ Content Safety Scan", expanded=False):
             st.caption("Check for specific content (e.g., spiders, blood, flashing lights).")
             safety_tag = st.text_input("Tag to search for:", placeholder="Ex: Spiders")
             
@@ -228,8 +233,8 @@ if os.path.exists("temp_video.mp4"):
                         if os.path.exists("subtitles.srt"):
                             with open("subtitles.srt", "r", encoding="utf-8") as f: current_srt = f.read()
                         
-                        # Call Engine
-                        response = weltengine.vx_assistant_fix(api_key, "temp_video.mp4", current_srt, prompt)
+                        # Call Engine with ACTIVE source
+                        response = weltengine.vx_assistant_fix(api_key, active_video_source, current_srt, prompt)
                         st.write(response)
 
                     # 3. Save result and refresh
@@ -239,19 +244,24 @@ if os.path.exists("temp_video.mp4"):
         st.divider()
         # ---------------------------------------
 
-        # Display Chat History
-        for msg in st.session_state.messages:
-            with st.chat_message(msg["role"]): st.markdown(msg["content"])
-
-        # Chat Input
+        # --- 💬 CHAT HISTORY (COLLAPSIBLE) ---
+        with st.expander("💬 Chat History", expanded=True):
+            if not st.session_state.messages:
+                st.caption("No messages yet.")
+            for msg in st.session_state.messages:
+                with st.chat_message(msg["role"]): st.markdown(msg["content"])
+        
+        # --- CHAT INPUT (FIXED) ---
         if user_input := st.chat_input("Ex: 'What is he holding?' OR 'Fix typo at 00:05'"):
             st.session_state.messages.append({"role": "user", "content": user_input})
-            with st.chat_message("user"): st.markdown(user_input)
+            # Force expand history to show new message
+            with st.sidebar:
+                with st.chat_message("user"): st.markdown(user_input)
 
             with st.chat_message("assistant"):
                 with st.status("🧠 Analyzing...", expanded=True) as status:
                     
-                    # SAFE READ: Handle case where subtitles don't exist yet
+                    # SAFE READ
                     current_srt = ""
                     if os.path.exists("subtitles.srt"):
                         with open("subtitles.srt", "r", encoding="utf-8") as f: 
@@ -259,8 +269,8 @@ if os.path.exists("temp_video.mp4"):
                     else:
                         current_srt = "(No subtitles generated yet)"
                     
-                    # Call Engine
-                    ai_response = weltengine.vx_assistant_fix(api_key, "temp_video.mp4", current_srt, user_input)
+                    # Call Engine with ACTIVE source
+                    ai_response = weltengine.vx_assistant_fix(api_key, active_video_source, current_srt, user_input)
                     
                     # LOGIC: Check if it's a FIX (Patch) or a QUESTION (Answer)
                     if ai_response.startswith("PATCH:"):
@@ -283,5 +293,7 @@ if os.path.exists("temp_video.mp4"):
                         final_msg = ai_response
                         status.update(label="Response Received", state="complete")
                 
-                st.markdown(final_msg)
+                # We don't need to print here because rerunning updates the expander,
+                # but for immediate feedback we append to state
             st.session_state.messages.append({"role": "assistant", "content": final_msg})
+            st.rerun()
