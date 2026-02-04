@@ -193,7 +193,7 @@ if start_processing and active_video_source:
 if active_video_source:
     with st.sidebar:
         # 1. TOP ACTION BAR (Static)
-        st.markdown("###VX Assistant")
+        st.markdown("### VX Assistant")
         
         c1, c2 = st.columns([3, 1])
         with c1:
