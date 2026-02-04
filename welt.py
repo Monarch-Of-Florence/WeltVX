@@ -77,7 +77,7 @@ st.markdown("*The Multimodal AI Subtitle Agent (Powered by Gemini 3)*")
 st.subheader("Upload Video")
 
 # 1. Define File Paths
-MASTER_DEMO_PATH = "master_demo.mp4"  # The permanent file (Must be in repo)
+MASTER_DEMO_PATH = "master_demo.webm"  # The permanent file (Must be in repo)
 WORKING_VIDEO_PATH = "temp_video.mp4" # The active processing file
 
 # 2. Standard Upload
