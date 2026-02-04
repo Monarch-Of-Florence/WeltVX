@@ -16,7 +16,6 @@ api_key = os.getenv("GEMINI_API_KEY")
 # 2. If not found locally, try Streamlit Cloud Secrets
 if not api_key:
     try:
-        # This will only work on Streamlit Cloud
         api_key = st.secrets["GEMINI_API_KEY"]
     except FileNotFoundError:
         pass
@@ -40,6 +39,7 @@ def apply_cinema_style():
     st.markdown("""
         <style>
             .stApp { background-color: #000000; }
+            
             /* Video Player Styling */
             [data-testid="stVideo"] {
                 border: 1px solid #333;
@@ -54,11 +54,51 @@ def apply_cinema_style():
             h3 { color: #e50914 !important; font-weight: 300; margin-bottom: 5px; }
             .block-container { padding-top: 2rem; }
             
-            /* Buttons & Chat */
+            /* Buttons */
             div.stButton > button { width: 100%; border: 1px solid #333; }
             div.stButton > button:hover { border-color: #e50914; color: #e50914; }
+            
+            /* Chat Bubbles */
             [data-testid="stChatMessage"] { background-color: #1a1a1a; border-radius: 10px; }
-            [data-testid="stChatInput"] { position: fixed; bottom: 20px; }
+            
+            /* --- SIDEBAR FIXES --- */
+            
+            /* 1. PIN THE CLOSE ARROW (So it never scrolls away) */
+            [data-testid="stSidebarCollapseButton"] {
+                position: fixed !important;
+                top: 1rem !important;
+                left: 1rem !important;
+                z-index: 100000 !important;
+                background-color: rgba(0,0,0,0.8) !important;
+                border: 1px solid #333;
+                border-radius: 50%;
+                width: 2.5rem; 
+                height: 2.5rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            [data-testid="stSidebarCollapseButton"]:hover {
+                background-color: #e50914 !important;
+                border-color: #e50914 !important;
+            }
+
+            /* 2. MAKE THE ACTION BAR STICKY */
+            /* This forces the top container of the sidebar to stick */
+            section[data-testid="stSidebar"] .block-container {
+                padding-top: 0rem; 
+            }
+            /* Target the specific div holding the title/buttons */
+            div[data-testid="stVerticalBlock"] > div:has(div[data-testid="stMarkdownContainer"] h3) {
+                position: sticky;
+                top: 0;
+                z-index: 999;
+                background-color: #000000; /* Solid black to hide text scrolling under */
+                border-bottom: 1px solid #333;
+                padding-top: 4rem; /* Extra space for the Pinned Arrow */
+                padding-bottom: 1rem;
+                margin-bottom: 1rem;
+            }
         </style>
     """, unsafe_allow_html=True)
 
@@ -76,9 +116,9 @@ st.markdown("*The Multimodal AI Subtitle Agent (Powered by Gemini 3)*")
 # --- MAIN APP ---
 st.subheader("Upload Video")
 
-# 1. Define File Paths
-MASTER_DEMO_PATH = "master_demo.webm"  # The permanent file (Must be in repo)
-WORKING_VIDEO_PATH = "temp_video.mp4" # The active processing file
+# 1. Define File Paths (Adjusted for .webm)
+MASTER_DEMO_PATH = "master_demo.webm"  # READ-ONLY Master File
+WORKING_VIDEO_PATH = "temp_video.mp4"  # WRITE-ONLY User Upload
 
 # 2. Standard Upload
 uploaded_file = st.file_uploader("Drag and drop file here (Max 2GB)", type=["mp4", "mov", "avi", "webm"])
@@ -88,7 +128,7 @@ use_demo = False
 if os.path.exists(MASTER_DEMO_PATH):
     use_demo = st.checkbox("Or use the pre-loaded Demo Video (Fastest)")
 else:
-    st.info(f"ℹ️ To use Demo Mode, rename your demo video to '{MASTER_DEMO_PATH}' and upload it to the project folder.")
+    st.info(f"ℹ️ To enable Demo Mode, ensure '{MASTER_DEMO_PATH}' exists in the folder.")
 
 # 4. Determine Active Source
 start_processing = False
@@ -130,7 +170,6 @@ if start_processing and active_video_source:
 
     with col1:
         st.markdown("### Your Video") 
-        # Video Player with Dynamic Start Time for Chapters
         subs_path = "subtitles.srt" if os.path.exists("subtitles.srt") else None
         
         # KEY FIX: Using the dynamic variable
@@ -176,7 +215,6 @@ if start_processing and active_video_source:
         else:
             st.success("✅ Subtitles Active")
             
-            # --- NEW FEATURE: Add Chapters Later ---
             if not st.session_state.chapters:
                 if st.button("➕ Add Smart Chapters"):
                      if not api_key: st.error("❌ API Key missing!"); st.stop()
@@ -184,7 +222,6 @@ if start_processing and active_video_source:
                          st.session_state.chapters = weltengine.generate_smart_chapters(api_key, active_video_source)
                          status.update(label="Chapters Added!", state="complete", expanded=False)
                          st.rerun()
-            # ---------------------------------------
 
             # --- SMART CHAPTERS DISPLAY ---
             if st.session_state.chapters:
@@ -207,93 +244,91 @@ if start_processing and active_video_source:
                 st.session_state.video_start_time = 0
                 st.rerun()
 
-# --- VX ASSISTANT SIDEBAR (UPDATED) ---
-# Show sidebar as soon as a video is loaded
+# --- VX ASSISTANT SIDEBAR (FIXED STICKY LAYOUT) ---
 if active_video_source:
     with st.sidebar:
+        # --- STICKY ACTION BAR (Top Section) ---
+        # The CSS in 'apply_cinema_style' makes this section float!
         st.markdown("### 🤖 VX Assistant")
-        st.caption("I can see the video! Ask me questions or use the scanner.")
-        st.divider()
-
-        # --- 🛡️ NEW: CONTENT SAFETY SCANNER ---
-        with st.expander("Content Safety Scan", expanded=False):
-            st.caption("Check for specific content (e.g., spiders, blood, flashing lights).")
-            safety_tag = st.text_input("Tag to search for:", placeholder="Ex: Spiders")
-            
-            if st.button("Run Safety Scan"):
-                if safety_tag:
-                    # 1. Add User's "Action" to chat history
-                    prompt = f"Scan this video strictly for the presence of '{safety_tag}'. If present, provide timestamps. If not, confirm it is safe."
-                    st.session_state.messages.append({"role": "user", "content": f"🔍 SCAN REQUEST: {safety_tag}"})
-                    
-                    # 2. Trigger the Assistant (Displaying a loading status)
-                    with st.status(f"🕵️ Scanning for '{safety_tag}'...", expanded=True):
-                         # Safe read of subtitles if they exist
-                        current_srt = ""
-                        if os.path.exists("subtitles.srt"):
-                            with open("subtitles.srt", "r", encoding="utf-8") as f: current_srt = f.read()
+        
+        c1, c2 = st.columns([3, 1])
+        with c1:
+            # Popover for Safety Scanner (Saves Space)
+            with st.popover("🛡️ Safety Scanner"):
+                st.caption("Check for sensitive content")
+                safety_tag = st.text_input("Tag (e.g. Blood):")
+                if st.button("Run Scan"):
+                    if safety_tag:
+                        prompt = f"Scan this video strictly for the presence of '{safety_tag}'. If present, provide timestamps. If not, confirm it is safe."
+                        st.session_state.messages.append({"role": "user", "content": f"🔍 SCAN REQUEST: {safety_tag}"})
                         
-                        # Call Engine with ACTIVE source
-                        response = weltengine.vx_assistant_fix(api_key, active_video_source, current_srt, prompt)
-                        st.write(response)
+                        with st.spinner(f"Scanning for {safety_tag}..."):
+                            # Safe read
+                            current_srt = ""
+                            if os.path.exists("subtitles.srt"):
+                                with open("subtitles.srt", "r", encoding="utf-8") as f: current_srt = f.read()
+                            
+                            response = weltengine.vx_assistant_fix(api_key, active_video_source, current_srt, prompt)
+                            st.session_state.messages.append({"role": "assistant", "content": response})
+                            st.rerun()
 
-                    # 3. Save result and refresh
-                    st.session_state.messages.append({"role": "assistant", "content": response})
-                    st.rerun()
+        with c2:
+            if st.button("🗑️", help="Clear Chat History"):
+                st.session_state.messages = []
+                st.rerun()
         
-        st.divider()
-        # ---------------------------------------
+        # -------------------------------------------------------
 
-        # --- 💬 CHAT HISTORY (COLLAPSIBLE) ---
-        with st.expander("💬 Chat History", expanded=True):
-            if not st.session_state.messages:
-                st.caption("No messages yet.")
-            for msg in st.session_state.messages:
-                with st.chat_message(msg["role"]): st.markdown(msg["content"])
+        # --- SCROLLABLE CHAT AREA ---
+        if not st.session_state.messages:
+            st.caption("I can see the video! Ask me questions.")
+            
+        for msg in st.session_state.messages:
+            with st.chat_message(msg["role"]): 
+                st.markdown(msg["content"])
         
-        # --- CHAT INPUT (FIXED) ---
-        if user_input := st.chat_input("Ex: 'What is he holding?' OR 'Fix typo at 00:05'"):
+        # Spacer to ensure the last message isn't hidden by the input box
+        st.markdown("<div style='height: 100px'></div>", unsafe_allow_html=True)
+
+        # --- CHAT INPUT (Fixed at Bottom by Streamlit) ---
+        if user_input := st.chat_input("Ask about the video..."):
             st.session_state.messages.append({"role": "user", "content": user_input})
-            # Force expand history to show new message
-            with st.sidebar:
-                with st.chat_message("user"): st.markdown(user_input)
-
+            st.rerun() # Rerun immediately to show user message
+            
+            # Logic will run on next pass, but we need to trigger the AI
+            # This pattern works better with reruns:
+            # 1. User Input -> Append to State -> Rerun
+            # 2. Top of script detects last message is USER -> Trigger AI
+            
+# --- AI TRIGGER LOGIC (Run at end of script) ---
+# If the last message was from the USER, we need to generate an answer
+if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
+    last_msg = st.session_state.messages[-1]["content"]
+    
+    # Don't re-trigger if it was a SCAN REQUEST (already handled inside button)
+    if not last_msg.startswith("🔍 SCAN REQUEST"):
+        with st.sidebar:
             with st.chat_message("assistant"):
                 with st.status("🧠 Analyzing...", expanded=True) as status:
-                    
-                    # SAFE READ
                     current_srt = ""
                     if os.path.exists("subtitles.srt"):
-                        with open("subtitles.srt", "r", encoding="utf-8") as f: 
-                            current_srt = f.read()
-                    else:
-                        current_srt = "(No subtitles generated yet)"
+                        with open("subtitles.srt", "r", encoding="utf-8") as f: current_srt = f.read()
                     
-                    # Call Engine with ACTIVE source
-                    ai_response = weltengine.vx_assistant_fix(api_key, active_video_source, current_srt, user_input)
+                    ai_response = weltengine.vx_assistant_fix(api_key, active_video_source, current_srt, last_msg)
                     
-                    # LOGIC: Check if it's a FIX (Patch) or a QUESTION (Answer)
                     if ai_response.startswith("PATCH:"):
                         clean_srt = weltengine.clean_and_repair_srt(ai_response)
                         if "Error" in clean_srt:
                             status.update(label="Patch Failed", state="error")
-                            final_msg = f"I tried to fix it, but failed: {clean_srt}"
+                            final_msg = f"Fix failed: {clean_srt}"
                         else:
                             with open("subtitles.srt", "w", encoding="utf-8") as f: f.write(clean_srt)
                             status.update(label="Subtitles Updated!", state="complete", expanded=False)
-                            final_msg = "✅ Fix applied. Refreshing player..."
+                            final_msg = "✅ Fix applied. Refreshing..."
                             time.sleep(1); st.rerun()
-                    
-                    elif ai_response.startswith("ANSWER:"):
-                        final_msg = ai_response.replace("ANSWER:", "").strip()
-                        status.update(label="Answer Ready", state="complete", expanded=False)
-                    
                     else:
-                        # Fallback for general conversation
-                        final_msg = ai_response
-                        status.update(label="Response Received", state="complete")
-                
-                # We don't need to print here because rerunning updates the expander,
-                # but for immediate feedback we append to state
-            st.session_state.messages.append({"role": "assistant", "content": final_msg})
-            st.rerun()
+                        final_msg = ai_response.replace("ANSWER:", "").strip()
+                        status.update(label="Response Ready", state="complete")
+                    
+                    st.write(final_msg)
+                    st.session_state.messages.append({"role": "assistant", "content": final_msg})
