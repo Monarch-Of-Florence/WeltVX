@@ -7,9 +7,9 @@ import weltengine
 
 # --- SETUP ---
 load_dotenv()
-APP_VERSION = "v1.1.0"
+APP_VERSION = "v1.1.0" 
 
-# 1. Load API Key
+# Load API Key
 api_key = os.getenv("GEMINI_API_KEY")
 if not api_key:
     try:
@@ -21,14 +21,9 @@ if not api_key:
     st.error("No API Key found! Please set GEMINI_API_KEY.")
     st.stop()
 
-# Icon setup
-if os.path.exists("welt_icon.png"):
-    icon = Image.open("welt_icon.png")
-else:
-    icon = "🌏"
+st.set_page_config(page_title=f"Welt VX {APP_VERSION}", page_icon="welt_icon.png", layout="wide")
 
-st.set_page_config(page_title=f"Welt VX {APP_VERSION}", page_icon=icon, layout="wide")
-
+# --- CUSTOM CSS & STYLING ---
 def apply_cinema_style():
     st.markdown("""
         <style>
@@ -41,14 +36,6 @@ def apply_cinema_style():
                 box-shadow: 0px 0px 20px rgba(229, 9, 20, 0.3);
             }
             h3 { color: #e50914 !important; font-weight: 300; margin-bottom: 5px; }
-            .block-container { padding-top: 2rem; }
-            
-            /* Buttons */
-            div.stButton > button { width: 100%; border: 1px solid #333; }
-            div.stButton > button:hover { border-color: #e50914; color: #e50914; }
-            
-            /* Chat Bubbles */
-            [data-testid="stChatMessage"] { background-color: #1a1a1a; border-radius: 10px; }
             
             /* PIN THE CLOSE ARROW */
             [data-testid="stSidebarCollapseButton"] {
@@ -65,6 +52,27 @@ def apply_cinema_style():
                 align-items: center;
                 justify-content: center;
             }
+
+            /* --- DYNAMIC SIDEBAR HEIGHT FIX --- */
+            /* We restrict the chat history height so it doesn't push the input off-screen.
+               calc(100vh - 250px) leaves exactly enough room for the Header (top) and Input (bottom).
+            */
+            section[data-testid="stSidebar"] div[data-testid="stVerticalBlockBorderWrapper"] {
+                height: calc(100vh - 250px) !important;
+                max-height: calc(100vh - 250px) !important;
+                overflow-y: auto !important;
+            }
+            
+            /* REMOVED: The "position: fixed" block for stChatInput. 
+               Streamlit will now naturally place the input box inside the sidebar 
+               directly below the chat history we sized above.
+            */
+
+            /* --- MODAL LINK STYLING --- */
+            a {
+                color: white !important;
+                text-decoration: underline !important;
+            }
         </style>
     """, unsafe_allow_html=True)
 
@@ -74,10 +82,45 @@ apply_cinema_style()
 if "messages" not in st.session_state: st.session_state.messages = []
 if "chapters" not in st.session_state: st.session_state.chapters = []
 if "video_start_time" not in st.session_state: st.session_state.video_start_time = 0
+if "safety_settings" not in st.session_state:
+    st.session_state.safety_settings = {
+        "nsfw": False,
+        "gore": False,
+        "profanity": False
+    }
+
+# --- MODAL: ADVANCED SETTINGS ---
+@st.dialog("⚙️ Advanced Safety Options")
+def show_advanced_settings():
+    st.caption("Customize the AI's content filters below.")
+    
+    # Checkboxes mapping to session state
+    nsfw = st.checkbox("Allow NSFW Content (18+)", value=st.session_state.safety_settings["nsfw"], 
+                       help="Enables analysis of nudity/sexual themes. Strictly blocks CSAM.")
+    
+    gore = st.checkbox("Allow Gore/Violence", value=st.session_state.safety_settings["gore"],
+                       help="Enables analysis of war footage, medical procedures, or horror content.")
+    
+    profanity = st.checkbox("Allow Profanity", value=st.session_state.safety_settings["profanity"],
+                            help="AI will not censor strong language in transcripts/responses.")
+
+    st.divider()
+    
+    st.markdown("*NOTE: It is recommended to use VX assistant to moderate the video with specific guardrails.*")
+    
+    # The Policy Link (White & Underlined via CSS)
+    st.markdown("Some type of content may be blocked even if the filters are disabled if they violate our policy. Please check our [content policy](https://ai.google.dev/gemini-api/docs/safety-guidance).")
+    
+    # Save & Close
+    if st.button("Save Settings"):
+        st.session_state.safety_settings["nsfw"] = nsfw
+        st.session_state.safety_settings["gore"] = gore
+        st.session_state.safety_settings["profanity"] = profanity
+        st.rerun()
 
 # --- HEADER ---
 st.title("Welt VX")
-st.markdown(f"*The Multimodal AI Subtitle Agent ({APP_VERSION})*")
+st.markdown(f"*Refining Viewer Experience with Multimodal AI Agents ({APP_VERSION})*")
 
 # --- MAIN APP ---
 st.subheader("Upload Video")
@@ -90,8 +133,6 @@ uploaded_file = st.file_uploader("Drag and drop file here (Max 2GB)", type=["mp4
 use_demo = False
 if os.path.exists(MASTER_DEMO_PATH):
     use_demo = st.checkbox("Or use the pre-loaded Demo Video (Fastest)")
-else:
-    st.info(f"ℹ️ Demo file '{MASTER_DEMO_PATH}' not found.")
 
 start_processing = False
 active_video_source = None
@@ -103,16 +144,13 @@ if uploaded_file:
         f.write(uploaded_file.getbuffer())
     active_video_source = WORKING_VIDEO_PATH
     current_video_id = uploaded_file.name
-    st.toast(f"✅ Uploaded: {uploaded_file.name}")
 
 elif use_demo:
     start_processing = True
     active_video_source = MASTER_DEMO_PATH
     current_video_id = "Demo_Video_Master"
-    st.toast("✅ Using Master Demo Video")
 
 if start_processing and active_video_source:
-    # RESET LOGIC
     if "last_video_id" not in st.session_state:
         st.session_state["last_video_id"] = ""
 
@@ -135,6 +173,12 @@ if start_processing and active_video_source:
     with col2:
         st.markdown("### ⚙️ Control Deck")
         
+        # OPEN THE MODAL
+        if st.button("⚙️ Advanced Options"):
+            show_advanced_settings()
+
+        st.divider()
+        
         # 1. SUBTITLE GENERATION
         if not os.path.exists("subtitles.srt"):
             st.markdown("#### Subtitles")
@@ -144,7 +188,15 @@ if start_processing and active_video_source:
             if st.button("Generate Subtitles (AI)", type="primary"):
                 with st.status("🚀 Launching Welt Engine...", expanded=True) as status:
                     status.write("Analyzing audio & vision...")
-                    raw_srt = weltengine.generate_subtitles_backend(api_key, active_video_source, language, include_sfx)
+                    # Pass the safety settings to the backend
+                    raw_srt = weltengine.generate_subtitles_backend(
+                        api_key, 
+                        active_video_source, 
+                        language, 
+                        include_sfx,
+                        # Pass settings as filters list for backend
+                        user_filters=st.session_state.safety_settings 
+                    )
                     
                     if "Error" in raw_srt:
                         status.update(label="Failed", state="error")
@@ -166,10 +218,8 @@ if start_processing and active_video_source:
 
         st.divider()
 
-        # 2. SMART CHAPTERS (Independent Feature)
+        # 2. SMART CHAPTERS
         st.markdown("#### Smart Chapters")
-        
-        # If chapters exist, show them
         if st.session_state.chapters:
             for timestamp, title in st.session_state.chapters:
                 parts = timestamp.split(":")
@@ -181,15 +231,13 @@ if start_processing and active_video_source:
             if st.button("Refresh Chapters"):
                 st.session_state.chapters = []
                 st.rerun()
-        
-        # If no chapters, show Generate button
         else:
             if st.button("Generate Smart Chapters"):
                 with st.spinner("Analyzing narrative structure..."):
                     st.session_state.chapters = weltengine.generate_smart_chapters(api_key, active_video_source)
                     st.rerun()
 
-# --- SIDEBAR (FIXED CHAT LAYOUT) ---
+# --- SIDEBAR (DYNAMIC SCROLL) ---
 if active_video_source:
     with st.sidebar:
         # 1. TOP ACTION BAR (Static)
@@ -202,7 +250,6 @@ if active_video_source:
                 if st.button("Scan"):
                     if safety_tag:
                         st.session_state.messages.append({"role": "user", "content": f"SCAN: {safety_tag}"})
-                        # Logic handled at bottom to prevent layout jumping
         with c2:
             if st.button("🗑️"):
                 st.session_state.messages = []
@@ -210,8 +257,7 @@ if active_video_source:
         
         st.divider()
 
-        # 2. CHAT HISTORY CONTAINER (Scrollable)
-        # This fixes the "answer below input" issue by containing messages in a fixed box
+        # 2. CHAT HISTORY (Math Override takes over here)
         chat_container = st.container(height=500, border=False)
         
         with chat_container:
@@ -222,30 +268,55 @@ if active_video_source:
                 with st.chat_message(msg["role"]): 
                     st.markdown(msg["content"])
 
-        # 3. CHAT INPUT (Pinned Bottom)
+        # 3. CHAT INPUT (Pinned by CSS)
         if user_input := st.chat_input("Type here..."):
-            # A. Add User Message
             st.session_state.messages.append({"role": "user", "content": user_input})
             
-            # B. Generate Response IMMEDIATELY
-            with chat_container: # Display loading INSIDE container
+            with chat_container:
                 with st.chat_message("assistant"):
                     with st.spinner("Thinking..."):
+                        
+                        # Get Contexts
                         current_srt = ""
                         if os.path.exists("subtitles.srt"):
                             with open("subtitles.srt", "r", encoding="utf-8") as f: current_srt = f.read()
                         
-                        # Call Engine
-                        response = weltengine.vx_assistant_fix(api_key, active_video_source, current_srt, user_input)
+                        current_chapters = st.session_state.chapters
                         
-                        # Handle Patches
+                        # CALL ENGINE (Now passing chapters)
+                        response = weltengine.vx_assistant_fix(
+                            api_key, 
+                            active_video_source, 
+                            current_srt, 
+                            current_chapters, # <--- NEW ARGUMENT
+                            user_input,
+                            user_filters=st.session_state.safety_settings
+                        )
+                        
+                        # --- RESPONSE ROUTER ---
+                        final_msg = ""
+                        
+                        # CASE A: SUBTITLE PATCH
                         if response.startswith("PATCH:"):
                             clean_srt = weltengine.clean_and_repair_srt(response)
                             with open("subtitles.srt", "w", encoding="utf-8") as f: f.write(clean_srt)
                             final_msg = "✅ Subtitles updated based on your feedback."
+                        
+                        # CASE B: CHAPTER UPDATE (NEW!)
+                        elif response.startswith("CHAPTERS:"):
+                            raw_data = response.replace("CHAPTERS:", "").strip()
+                            new_chapters = []
+                            for line in raw_data.split("\n"):
+                                if " - " in line:
+                                    parts = line.split(" - ", 1)
+                                    new_chapters.append((parts[0].strip(), parts[1].strip()))
+                            
+                            st.session_state.chapters = new_chapters
+                            final_msg = "✅ Smart Chapters updated."
+                        
+                        # CASE C: STANDARD ANSWER
                         else:
                             final_msg = response.replace("ANSWER:", "").strip()
 
-            # C. Save AI Message & Rerun
             st.session_state.messages.append({"role": "assistant", "content": final_msg})
-            st.rerun() # This forces the layout to redraw perfectly with the new message inside the box
+            st.rerun() # Rerun immediately updates the Chapter List in the main view
