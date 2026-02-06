@@ -212,7 +212,7 @@ if active_video_source:
 
         # 2. CHAT HISTORY CONTAINER (Scrollable)
         # This fixes the "answer below input" issue by containing messages in a fixed box
-        chat_container = st.container(height=300, border=False)
+        chat_container = st.container(height=400, border=False)
         
         with chat_container:
             if not st.session_state.messages:
