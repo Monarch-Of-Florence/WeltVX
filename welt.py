@@ -311,15 +311,19 @@ if active_video_source:
 
                         # CASE C: SEEK COMMAND (The "Director" Feature)
                         elif response.startswith("SEEK:"):
-                            # Robust Parsing Logic
                             try:
                                 # 1. Extract the raw string after "SEEK:"
+                                # Example raw_content: "01:03 Here is the red car scene."
                                 raw_content = response.replace("SEEK:", "").strip()
                                 
                                 # 2. Separate Timestamp from Description
-                                # Split only on the first space to keep the description intact
+                                # This splits the string at the first whitespace found
                                 parts = raw_content.split(" ", 1) 
-                                timestamp_str = parts[0].strip().replace("[", "").replace("]", "") # Remove brackets if AI added them
+                                
+                                # Clean the timestamp (removing any accidental brackets)
+                                timestamp_str = parts[0].strip().replace("[", "").replace("]", "")
+                                
+                                # Capture the rest as the description
                                 description = parts[1].strip() if len(parts) > 1 else "Jumping to scene..."
                                 
                                 # 3. Calculate Seconds (Handle MM:SS or H:MM:SS)
@@ -329,16 +333,22 @@ if active_video_source:
                                 elif len(t_parts) == 2: # MM:SS
                                     seconds = int(t_parts[0]) * 60 + int(t_parts[1])
                                 else:
-                                    raise ValueError("Unknown format")
+                                    raise ValueError("Invalid timestamp format from AI")
                                 
-                                # 4. Action
-                                st.session_state.video_start_time = seconds
+                                # 4. Prepare the final message for the UI
                                 final_msg = f"🎥 **Jumped to {timestamp_str}**: {description}"
+                                
+                                # 5. ACTION: Update state and SAVE to history BEFORE rerun
+                                st.session_state.video_start_time = seconds
+                                st.session_state.messages.append({"role": "assistant", "content": final_msg})
+                                
+                                # 6. Trigger the video jump
                                 st.rerun()
                                 
                             except Exception as e:
-                                # Fallback: Print the error so we can see exactly what went wrong
                                 final_msg = f"⚠️ Could not jump. AI sent: '{response}' (Error: {e})"
+                                # We still append the error so the user sees why it failed
+                                st.session_state.messages.append({"role": "assistant", "content": final_msg})
 
                         # CASE D: STANDARD ANSWER
                         else:
