@@ -311,22 +311,34 @@ if active_video_source:
 
                         # CASE C: SEEK COMMAND (The "Director" Feature)
                         elif response.startswith("SEEK:"):
-                            # Format: "SEEK: 02:14 Here is the scene..."
-                            parts = response.replace("SEEK:", "").strip().split(" ", 1) 
-                            timestamp = parts[0] # "02:14"
-                            description = parts[1] if len(parts) > 1 else "Jumping to scene..."
-                            
+                            # Robust Parsing Logic
                             try:
-                                # Convert "MM:SS" to seconds
-                                t_parts = timestamp.split(":")
-                                seconds = int(t_parts[0]) * 60 + int(t_parts[1])
+                                # 1. Extract the raw string after "SEEK:"
+                                raw_content = response.replace("SEEK:", "").strip()
                                 
-                                # ACTION: Update Session State to move the video
+                                # 2. Separate Timestamp from Description
+                                # Split only on the first space to keep the description intact
+                                parts = raw_content.split(" ", 1) 
+                                timestamp_str = parts[0].strip().replace("[", "").replace("]", "") # Remove brackets if AI added them
+                                description = parts[1].strip() if len(parts) > 1 else "Jumping to scene..."
+                                
+                                # 3. Calculate Seconds (Handle MM:SS or H:MM:SS)
+                                t_parts = timestamp_str.split(":")
+                                if len(t_parts) == 3: # H:MM:SS
+                                    seconds = int(t_parts[0]) * 3600 + int(t_parts[1]) * 60 + int(t_parts[2])
+                                elif len(t_parts) == 2: # MM:SS
+                                    seconds = int(t_parts[0]) * 60 + int(t_parts[1])
+                                else:
+                                    raise ValueError("Unknown format")
+                                
+                                # 4. Action
                                 st.session_state.video_start_time = seconds
-                                final_msg = f"🎥 **Jumped to {timestamp}**: {description}"
-                                st.rerun() # Forces the video player to reload at the new time
-                            except:
-                                final_msg = f"Could not jump to {timestamp}. Invalid format."
+                                final_msg = f"🎥 **Jumped to {timestamp_str}**: {description}"
+                                st.rerun()
+                                
+                            except Exception as e:
+                                # Fallback: Print the error so we can see exactly what went wrong
+                                final_msg = f"⚠️ Could not jump. AI sent: '{response}' (Error: {e})"
 
                         # CASE D: STANDARD ANSWER
                         else:
