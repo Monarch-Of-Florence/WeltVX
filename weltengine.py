@@ -196,6 +196,10 @@ def vx_assistant_fix(api_key, video_path, current_srt, current_chapters, user_in
        
     3. **QUESTION**: If user asks about video content.
        - Output: "ANSWER:" followed by your helpful response.
+
+    4. **NAVIGATION**: If user wants to 'go to', 'jump to', or 'find' a specific part/object in the video:
+       - Output: "SEEK:MM:SS" followed by a short description
+       - Example: "SEEK:12:34 - The part where the main character enters the room."
     """
     
     # Format Context

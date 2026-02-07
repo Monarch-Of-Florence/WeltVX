@@ -7,7 +7,7 @@ import weltengine
 
 # --- SETUP ---
 load_dotenv()
-APP_VERSION = "v1.1.0" 
+APP_VERSION = "v1.2.0" 
 
 # Load API Key
 api_key = os.getenv("GEMINI_API_KEY")
@@ -63,11 +63,6 @@ def apply_cinema_style():
                 overflow-y: auto !important;
             }
             
-            /* REMOVED: The "position: fixed" block for stChatInput. 
-               Streamlit will now naturally place the input box inside the sidebar 
-               directly below the chat history we sized above.
-            */
-
             /* --- MODAL LINK STYLING --- */
             a {
                 color: white !important;
@@ -288,7 +283,7 @@ if active_video_source:
                             api_key, 
                             active_video_source, 
                             current_srt, 
-                            current_chapters, # <--- NEW ARGUMENT
+                            current_chapters, 
                             user_input,
                             user_filters=st.session_state.safety_settings
                         )
@@ -302,7 +297,7 @@ if active_video_source:
                             with open("subtitles.srt", "w", encoding="utf-8") as f: f.write(clean_srt)
                             final_msg = "✅ Subtitles updated based on your feedback."
                         
-                        # CASE B: CHAPTER UPDATE (NEW!)
+                        # CASE B: CHAPTER UPDATE
                         elif response.startswith("CHAPTERS:"):
                             raw_data = response.replace("CHAPTERS:", "").strip()
                             new_chapters = []
@@ -313,10 +308,29 @@ if active_video_source:
                             
                             st.session_state.chapters = new_chapters
                             final_msg = "✅ Smart Chapters updated."
-                        
-                        # CASE C: STANDARD ANSWER
+
+                        # CASE C: SEEK COMMAND (The "Director" Feature)
+                        elif response.startswith("SEEK:"):
+                            # Format: "SEEK: 02:14 Here is the scene..."
+                            parts = response.replace("SEEK:", "").strip().split(" ", 1) 
+                            timestamp = parts[0] # "02:14"
+                            description = parts[1] if len(parts) > 1 else "Jumping to scene..."
+                            
+                            try:
+                                # Convert "MM:SS" to seconds
+                                t_parts = timestamp.split(":")
+                                seconds = int(t_parts[0]) * 60 + int(t_parts[1])
+                                
+                                # ACTION: Update Session State to move the video
+                                st.session_state.video_start_time = seconds
+                                final_msg = f"🎥 **Jumped to {timestamp}**: {description}"
+                                st.rerun() # Forces the video player to reload at the new time
+                            except:
+                                final_msg = f"Could not jump to {timestamp}. Invalid format."
+
+                        # CASE D: STANDARD ANSWER
                         else:
                             final_msg = response.replace("ANSWER:", "").strip()
 
             st.session_state.messages.append({"role": "assistant", "content": final_msg})
-            st.rerun() # Rerun immediately updates the Chapter List in the main view
+            st.rerun()
