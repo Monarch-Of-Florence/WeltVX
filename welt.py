@@ -167,8 +167,9 @@ def open_advanced_options():
         st.rerun()
 
 # --- MAIN APP LOGIC ---
-st.subheader("Studio")
-
+st.title(f"Welt VX {APP_VERSION}")
+st.subheader("Redefine Viewer Experience with Multimodal AI Agents")
+st.caption("Powered by Gemini 3")
 MASTER_DEMO_PATH = "master_demo.webm" 
 WORKING_VIDEO_PATH = "temp_video.mp4" 
 
