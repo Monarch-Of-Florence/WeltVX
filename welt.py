@@ -6,7 +6,7 @@ import weltengine
 
 # --- SETUP ---
 load_dotenv()
-APP_VERSION = "v1.5.0" # Inline Input Update
+APP_VERSION = "v1.5.0" # Inline Input Expansion
 
 # Load API Key
 api_key = os.getenv("GEMINI_API_KEY")
@@ -112,7 +112,7 @@ if "video_start_time" not in st.session_state: st.session_state.video_start_time
 if "show_assistant" not in st.session_state: st.session_state.show_assistant = False 
 if "last_video_id" not in st.session_state: st.session_state.last_video_id = ""
 if "form_reset_id" not in st.session_state: st.session_state.form_reset_id = 0 
-if "input_mode" not in st.session_state: st.session_state.input_mode = "normal" # Tracks Input State
+if "input_mode" not in st.session_state: st.session_state.input_mode = "normal" 
 if "safety_settings" not in st.session_state:
     st.session_state.safety_settings = {"nsfw": False, "gore": False, "profanity": False}
 
@@ -274,23 +274,24 @@ if "active_video_path" in st.session_state:
                     
                     sc1, sc2 = st.columns(2)
                     with sc1:
-                        if st.button("Action Scan", use_container_width=True):
-                            st.session_state.messages.append({"role": "user", "content": "Find the most exciting action scene."})
+                        # NEW: Jump to Part (Inline)
+                        if st.button(":material/search: Jump to Part", use_container_width=True):
+                            st.session_state.input_mode = "jump_to_part"
                             st.rerun()
                     with sc2:
-                        # Safety Scan Mode Trigger
-                        if st.button("Safety Scan", use_container_width=True):
+                        # Safety Scan (Inline)
+                        if st.button(":material/security: Safety Scan", use_container_width=True):
                             st.session_state.input_mode = "safety_scan"
                             st.rerun()
                     
                     sc3, sc4 = st.columns(2)
                     with sc3:
-                         if st.button("Recap Arc", use_container_width=True):
+                         if st.button(":material/summarize: Recap Arc", use_container_width=True):
                             st.session_state.messages.append({"role": "user", "content": "Summarize the key events so far."})
                             st.rerun()
                     with sc4:
-                         # Repair Subs Mode Trigger (NEW)
-                         if st.button("Repair Subs", use_container_width=True):
+                         # Repair Subs (Inline)
+                         if st.button(":material/build: Fix Subs", use_container_width=True):
                             st.session_state.input_mode = "repair_subs"
                             st.rerun()
             else:
@@ -300,7 +301,6 @@ if "active_video_path" in st.session_state:
             
             # --- 2. DYNAMIC INPUT HANDLER ---
             if st.session_state.input_mode == "safety_scan":
-                # Special Input Box for Safety
                 scan_query = st.chat_input("What content should I detect? (e.g. Weapons, Brands)", key="scan_input")
                 if scan_query:
                     full_prompt = f"Scan the video specifically for: {scan_query}. Provide timestamps if found."
@@ -309,16 +309,22 @@ if "active_video_path" in st.session_state:
                     st.rerun()
                     
             elif st.session_state.input_mode == "repair_subs":
-                # Special Input Box for Repairs (NEW)
                 repair_query = st.chat_input("Describe the issue (e.g. 'Fix spelling in intro' or 'Change 00:10 to Hello')", key="repair_input")
                 if repair_query:
                     full_prompt = f"Fix Subtitles: {repair_query}"
                     st.session_state.messages.append({"role": "user", "content": full_prompt})
                     st.session_state.input_mode = "normal" 
                     st.rerun()
+            
+            elif st.session_state.input_mode == "jump_to_part":
+                jump_query = st.chat_input("Where do you want to go? (e.g. 'The explosion scene', 'When they meet')", key="jump_input")
+                if jump_query:
+                    full_prompt = f"Jump to timestamp: {jump_query}"
+                    st.session_state.messages.append({"role": "user", "content": full_prompt})
+                    st.session_state.input_mode = "normal"
+                    st.rerun()
                     
             else:
-                # Standard Chat Input
                 if prompt := st.chat_input("Ask Welt..."):
                     st.session_state.messages.append({"role": "user", "content": prompt})
                     st.rerun()
