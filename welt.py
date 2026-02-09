@@ -6,7 +6,7 @@ import weltengine
 
 # --- SETUP ---
 load_dotenv()
-APP_VERSION = "v1.4.4" 
+APP_VERSION = "v1.4.6" # Updated Version
 
 # Load API Key
 api_key = os.getenv("GEMINI_API_KEY")
@@ -106,6 +106,7 @@ if "chapters" not in st.session_state: st.session_state.chapters = []
 if "video_start_time" not in st.session_state: st.session_state.video_start_time = 0
 if "show_assistant" not in st.session_state: st.session_state.show_assistant = False 
 if "last_video_id" not in st.session_state: st.session_state.last_video_id = ""
+if "form_reset_id" not in st.session_state: st.session_state.form_reset_id = 0 # NEW: Fixes UI State Persistence
 if "safety_settings" not in st.session_state:
     st.session_state.safety_settings = {"nsfw": False, "gore": False, "profanity": False}
 
@@ -139,32 +140,35 @@ def open_subtitle_window():
         else:
             st.error("Video source not found.")
 
-# --- MODAL 2: ADVANCED OPTIONS (FIXED: Explicit Save) ---
+# --- MODAL 2: ADVANCED OPTIONS (FIXED: FORM RESET) ---
 @st.dialog("⚙️ Advanced Safety")
 def open_advanced_options():
     st.caption("Global Content Filters")
     
-    # Use standard widgets without keys to capture 'temporary' state
-    # This ensures changes don't stick unless Save is clicked
-    current_nsfw = st.checkbox("Allow NSFW (18+)", value=st.session_state.safety_settings["nsfw"])
-    current_gore = st.checkbox("Allow Gore/Violence", value=st.session_state.safety_settings["gore"])
-    current_prof = st.checkbox("Allow Profanity", value=st.session_state.safety_settings["profanity"])
+    # NEW: Generate a unique key based on the Reset ID.
+    # This forces Streamlit to create a FRESH form every time the dialog opens.
+    form_key = f"safety_form_{st.session_state.form_reset_id}"
     
-    st.info("Changes will only apply when you click Save.")
-    
-    st.markdown(
-        """<a class="policy-link" href="https://ai.google.dev/gemini-api/docs/safety-guidance" target="_blank">Review Content Policy</a>""", 
-        unsafe_allow_html=True
-    )
-    
-    st.divider()
-    
-    # Commit changes ONLY here
-    if st.button("💾 Save Changes", type="primary", use_container_width=True):
-        st.session_state.safety_settings["nsfw"] = current_nsfw
-        st.session_state.safety_settings["gore"] = current_gore
-        st.session_state.safety_settings["profanity"] = current_prof
-        st.rerun()
+    with st.form(key=form_key):
+        # Because the form key is new, these widgets reset to their backend 'value'
+        new_nsfw = st.checkbox("Allow NSFW (18+)", value=st.session_state.safety_settings["nsfw"])
+        new_gore = st.checkbox("Allow Gore/Violence", value=st.session_state.safety_settings["gore"])
+        new_prof = st.checkbox("Allow Profanity", value=st.session_state.safety_settings["profanity"])
+        
+        st.info("Changes will only apply when you click Save.")
+        
+        st.markdown(
+            """<a class="policy-link" href="https://ai.google.dev/gemini-api/docs/safety-guidance" target="_blank">Review Content Policy</a>""", 
+            unsafe_allow_html=True
+        )
+        st.divider()
+        
+        # Use form_submit_button for the real action
+        if st.form_submit_button("💾 Save Changes", type="primary", use_container_width=True):
+            st.session_state.safety_settings["nsfw"] = new_nsfw
+            st.session_state.safety_settings["gore"] = new_gore
+            st.session_state.safety_settings["profanity"] = new_prof
+            st.rerun()
 
 # --- MAIN APP LOGIC ---
 st.title(f"Welt VX {APP_VERSION}")
@@ -233,7 +237,9 @@ if "active_video_path" in st.session_state:
                     st.rerun()
             
             with c4:
+                # NEW: Increment form ID before opening options to force a UI reset
                 if st.button("⚙️ Options", use_container_width=True):
+                    st.session_state.form_reset_id += 1 
                     open_advanced_options()
 
         if st.session_state.chapters:
@@ -352,6 +358,5 @@ if "active_video_path" in st.session_state:
                             else:
                                 final_msg = response.replace("ANSWER:", "").strip()
                 
-                # Append standard response and refresh
                  st.session_state.messages.append({"role": "assistant", "content": final_msg})
                  st.rerun()
