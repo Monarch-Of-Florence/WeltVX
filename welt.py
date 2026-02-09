@@ -286,8 +286,8 @@ if "active_video_path" in st.session_state:
                     
                     sc3, sc4 = st.columns(2)
                     with sc3:
-                         if st.button(":material/summarize: Recap Arc", use_container_width=True):
-                            st.session_state.messages.append({"role": "user", "content": "Summarize the key events so far."})
+                         if st.button("Video Summary", use_container_width=True):
+                            st.session_state.messages.append({"role": "user", "content": "Summarize the video"})
                             st.rerun()
                     with sc4:
                          # Repair Subs (Inline)
