@@ -250,9 +250,21 @@ if "active_video_path" in st.session_state:
             with st.container(height=200):
                 for ts, title in st.session_state.chapters:
                     if st.button(f"{ts} - {title}", key=ts, use_container_width=True):
-                        m, s = map(int, ts.split(":"))
-                        st.session_state.video_start_time = m * 60 + s
-                        st.rerun()
+                        try:
+                            # Safely clean the string and convert only valid numeric parts
+                            parts = [int(p.strip()) for p in ts.split(":") if p.strip().isdigit()]
+                            
+                            if len(parts) == 3: # HH:MM:SS
+                                sec = parts[0]*3600 + parts[1]*60 + parts[2]
+                            elif len(parts) == 2: # MM:SS
+                                sec = parts[0]*60 + parts[1]
+                            else:
+                                sec = 0
+                            
+                            st.session_state.video_start_time = sec
+                            st.rerun()
+                        except (ValueError, IndexError):
+                            st.toast(f"⚠️ Formatting error in timestamp: {ts}", icon="⚠️")
 
     # --- RIGHT COLUMN (VX Assistant) ---
     if st.session_state.show_assistant:
