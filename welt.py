@@ -174,7 +174,7 @@ def open_advanced_options():
 
 # --- MAIN APP LOGIC ---
 st.title("Welt VX")
-st.caption(f"Context-Aware Video Intelligence • {APP_VERSION}")
+st.caption(f"Multimodal Agentic Environment for Videos (Powered by Gemini) • {APP_VERSION}")
 st.subheader("Studio")
 
 MASTER_DEMO_PATH = "master_demo.webm" 
