@@ -22,7 +22,7 @@ if not api_key:
 
 st.set_page_config(page_title=f"Welt VX {APP_VERSION}", page_icon="welt_icon.png", layout="wide")
 
-# --- CUSTOM CSS (Strict Green/Black Theme - NO BLUE) ---
+# --- CUSTOM CSS ---
 def apply_studio_style():
     st.markdown("""
         <style>
