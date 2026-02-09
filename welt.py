@@ -6,7 +6,7 @@ import weltengine
 
 # --- SETUP ---
 load_dotenv()
-APP_VERSION = "v1.4.7" # Minimalist Icon Update
+APP_VERSION = "v1.5.0" # Inline Input Update
 
 # Load API Key
 api_key = os.getenv("GEMINI_API_KEY")
@@ -83,7 +83,7 @@ def apply_studio_style():
                 border-color: #b00610;
             }
             
-            /* --- 4. MATERIAL ICONS (ADDED: Force No Blue) --- */
+            /* --- 4. MATERIAL ICONS (Force No Blue) --- */
             span[data-testid="stIconMaterial"] {
                 color: inherit !important;
             }
@@ -112,11 +112,12 @@ if "video_start_time" not in st.session_state: st.session_state.video_start_time
 if "show_assistant" not in st.session_state: st.session_state.show_assistant = False 
 if "last_video_id" not in st.session_state: st.session_state.last_video_id = ""
 if "form_reset_id" not in st.session_state: st.session_state.form_reset_id = 0 
+if "input_mode" not in st.session_state: st.session_state.input_mode = "normal" # Tracks Input State
 if "safety_settings" not in st.session_state:
     st.session_state.safety_settings = {"nsfw": False, "gore": False, "profanity": False}
 
 # --- MODAL 1: SUBTITLE STUDIO ---
-@st.dialog("Subtitle Generator") # Removed Emoji
+@st.dialog("Subtitle Generator")
 def open_subtitle_window():
     st.caption("Configure generation settings")
     c1, c2 = st.columns([2, 1])
@@ -129,7 +130,6 @@ def open_subtitle_window():
     
     st.divider()
     
-    # Updated Icon
     if st.button(":material/bolt: Generate Subtitles", type="primary", use_container_width=True):
         if "active_video_path" in st.session_state:
             with st.spinner("Initializing Agent..."):
@@ -147,7 +147,7 @@ def open_subtitle_window():
             st.error("Video source not found.")
 
 # --- MODAL 2: ADVANCED OPTIONS ---
-@st.dialog("Advanced Safety") # Removed Emoji
+@st.dialog("Advanced Safety")
 def open_advanced_options():
     st.caption("Global Content Filters")
     
@@ -166,7 +166,6 @@ def open_advanced_options():
         )
         st.divider()
         
-        # Updated Icon
         if st.form_submit_button(":material/check_circle: Save Changes", type="primary", use_container_width=True):
             st.session_state.safety_settings["nsfw"] = current_nsfw
             st.session_state.safety_settings["gore"] = current_gore
@@ -174,9 +173,10 @@ def open_advanced_options():
             st.rerun()
 
 # --- MAIN APP LOGIC ---
-st.title(f"Welt VX {APP_VERSION}")
-st.subheader("Redefine Viewer Experience with Multimodal AI Agents")
-st.caption("Powered by Gemini 3")
+st.title("Welt VX")
+st.caption(f"Context-Aware Video Intelligence • {APP_VERSION}")
+st.subheader("Studio")
+
 MASTER_DEMO_PATH = "master_demo.webm" 
 WORKING_VIDEO_PATH = "temp_video.mp4" 
 
@@ -204,6 +204,7 @@ if start_processing and current_video_id != st.session_state.last_video_id:
     st.session_state.chapters = []
     st.session_state.video_start_time = 0
     st.session_state.last_video_id = current_video_id
+    st.session_state.input_mode = "normal" 
     st.rerun()
 
 # --- LAYOUT ---
@@ -223,19 +224,16 @@ if "active_video_path" in st.session_state:
             c1, c2, c3, c4 = st.columns(4)
             
             with c1:
-                # Updated Icon
                 if st.button(":material/subtitles: Subtitles", use_container_width=True):
                     open_subtitle_window()
             
             with c2:
-                # Updated Icon
                 if st.button(":material/segment: Smart Chapters", use_container_width=True):
                     with st.spinner("Analyzing Narrative Arc..."):
                         st.session_state.chapters = weltengine.generate_smart_chapters(api_key, st.session_state.active_video_path)
                         st.rerun()
             
             with c3:
-                # Updated Icons
                 label = ":material/close: Close Assistant" if st.session_state.show_assistant else ":material/smart_toy: VX Assistant"
                 type_color = "secondary" if st.session_state.show_assistant else "primary"
                 if st.button(label, type=type_color, use_container_width=True):
@@ -243,13 +241,12 @@ if "active_video_path" in st.session_state:
                     st.rerun()
             
             with c4:
-                # Updated Icon
                 if st.button(":material/settings: Options", use_container_width=True):
                     st.session_state.form_reset_id += 1 
                     open_advanced_options()
 
         if st.session_state.chapters:
-            st.markdown("#### :material/menu_book: Chapters") # Updated Icon
+            st.markdown("#### :material/menu_book: Chapters") 
             with st.container(height=200):
                 for ts, title in st.session_state.chapters:
                     if st.button(f"{ts} - {title}", key=ts, use_container_width=True):
@@ -263,27 +260,27 @@ if "active_video_path" in st.session_state:
             h1, h2 = st.columns([3, 1])
             with h1: st.markdown("#### Assistant")
             with h2: 
-                # Updated Icon
                 if st.button(":material/delete:", help="Clear Chat"):
                     st.session_state.messages = []
+                    st.session_state.input_mode = "normal" 
                     st.rerun()
             
             chat_box = st.container(height=500)
             
             # --- 1. CHAT RENDER LOOP ---
-            if not st.session_state.messages:
+            if not st.session_state.messages and st.session_state.input_mode == "normal":
                 with chat_box:
                     st.info("I can help you navigate, fix errors, or answer questions.")
                     
-                    # --- CLEAN TEXT CHIPS (Removed Emojis) ---
                     sc1, sc2 = st.columns(2)
                     with sc1:
                         if st.button("Action Scan", use_container_width=True):
                             st.session_state.messages.append({"role": "user", "content": "Find the most exciting action scene."})
                             st.rerun()
                     with sc2:
+                        # Safety Scan Mode Trigger
                         if st.button("Safety Scan", use_container_width=True):
-                            st.session_state.messages.append({"role": "user", "content": "Scan for any restricted content."})
+                            st.session_state.input_mode = "safety_scan"
                             st.rerun()
                     
                     sc3, sc4 = st.columns(2)
@@ -292,18 +289,39 @@ if "active_video_path" in st.session_state:
                             st.session_state.messages.append({"role": "user", "content": "Summarize the key events so far."})
                             st.rerun()
                     with sc4:
+                         # Repair Subs Mode Trigger (NEW)
                          if st.button("Repair Subs", use_container_width=True):
-                            st.session_state.messages.append({"role": "user", "content": "Check the subtitles for any spelling errors."})
+                            st.session_state.input_mode = "repair_subs"
                             st.rerun()
             else:
                  with chat_box:
                     for msg in st.session_state.messages:
                         with st.chat_message(msg["role"]): st.markdown(msg["content"])
             
-            # --- 2. INPUT HANDLER ---
-            if prompt := st.chat_input("Ask Welt..."):
-                st.session_state.messages.append({"role": "user", "content": prompt})
-                st.rerun()
+            # --- 2. DYNAMIC INPUT HANDLER ---
+            if st.session_state.input_mode == "safety_scan":
+                # Special Input Box for Safety
+                scan_query = st.chat_input("What content should I detect? (e.g. Weapons, Brands)", key="scan_input")
+                if scan_query:
+                    full_prompt = f"Scan the video specifically for: {scan_query}. Provide timestamps if found."
+                    st.session_state.messages.append({"role": "user", "content": full_prompt})
+                    st.session_state.input_mode = "normal" 
+                    st.rerun()
+                    
+            elif st.session_state.input_mode == "repair_subs":
+                # Special Input Box for Repairs (NEW)
+                repair_query = st.chat_input("Describe the issue (e.g. 'Fix spelling in intro' or 'Change 00:10 to Hello')", key="repair_input")
+                if repair_query:
+                    full_prompt = f"Fix Subtitles: {repair_query}"
+                    st.session_state.messages.append({"role": "user", "content": full_prompt})
+                    st.session_state.input_mode = "normal" 
+                    st.rerun()
+                    
+            else:
+                # Standard Chat Input
+                if prompt := st.chat_input("Ask Welt..."):
+                    st.session_state.messages.append({"role": "user", "content": prompt})
+                    st.rerun()
 
             # --- 3. BACKEND TRIGGER ---
             if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
