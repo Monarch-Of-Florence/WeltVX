@@ -214,3 +214,4 @@ subtitles.srt
 __pycache__/
 *.pyc
 .streamlit/
+/greek_waiter.mp4
