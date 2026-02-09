@@ -6,7 +6,7 @@ import weltengine
 
 # --- SETUP ---
 load_dotenv()
-APP_VERSION = "v1.4.6" # Updated Version
+APP_VERSION = "v1.4.7" # Minimalist Icon Update
 
 # Load API Key
 api_key = os.getenv("GEMINI_API_KEY")
@@ -83,6 +83,11 @@ def apply_studio_style():
                 border-color: #b00610;
             }
             
+            /* --- 4. MATERIAL ICONS (ADDED: Force No Blue) --- */
+            span[data-testid="stIconMaterial"] {
+                color: inherit !important;
+            }
+            
             /* Link Styling */
             a.policy-link { color: #46d369 !important; text-decoration: underline !important; font-weight: bold; }
             
@@ -106,12 +111,12 @@ if "chapters" not in st.session_state: st.session_state.chapters = []
 if "video_start_time" not in st.session_state: st.session_state.video_start_time = 0
 if "show_assistant" not in st.session_state: st.session_state.show_assistant = False 
 if "last_video_id" not in st.session_state: st.session_state.last_video_id = ""
-if "form_reset_id" not in st.session_state: st.session_state.form_reset_id = 0 # NEW: Fixes UI State Persistence
+if "form_reset_id" not in st.session_state: st.session_state.form_reset_id = 0 
 if "safety_settings" not in st.session_state:
     st.session_state.safety_settings = {"nsfw": False, "gore": False, "profanity": False}
 
 # --- MODAL 1: SUBTITLE STUDIO ---
-@st.dialog("🎙️ Subtitle Generator")
+@st.dialog("Subtitle Generator") # Removed Emoji
 def open_subtitle_window():
     st.caption("Configure generation settings")
     c1, c2 = st.columns([2, 1])
@@ -124,7 +129,8 @@ def open_subtitle_window():
     
     st.divider()
     
-    if st.button("🚀 Generate Subtitles", type="primary", use_container_width=True):
+    # Updated Icon
+    if st.button(":material/bolt: Generate Subtitles", type="primary", use_container_width=True):
         if "active_video_path" in st.session_state:
             with st.spinner("Initializing Agent..."):
                 res = weltengine.generate_subtitles_backend(
@@ -140,20 +146,17 @@ def open_subtitle_window():
         else:
             st.error("Video source not found.")
 
-# --- MODAL 2: ADVANCED OPTIONS (FIXED: FORM RESET) ---
-@st.dialog("⚙️ Advanced Safety")
+# --- MODAL 2: ADVANCED OPTIONS ---
+@st.dialog("Advanced Safety") # Removed Emoji
 def open_advanced_options():
     st.caption("Global Content Filters")
     
-    # NEW: Generate a unique key based on the Reset ID.
-    # This forces Streamlit to create a FRESH form every time the dialog opens.
     form_key = f"safety_form_{st.session_state.form_reset_id}"
     
     with st.form(key=form_key):
-        # Because the form key is new, these widgets reset to their backend 'value'
-        new_nsfw = st.checkbox("Allow NSFW (18+)", value=st.session_state.safety_settings["nsfw"])
-        new_gore = st.checkbox("Allow Gore/Violence", value=st.session_state.safety_settings["gore"])
-        new_prof = st.checkbox("Allow Profanity", value=st.session_state.safety_settings["profanity"])
+        current_nsfw = st.checkbox("Allow NSFW (18+)", value=st.session_state.safety_settings["nsfw"])
+        current_gore = st.checkbox("Allow Gore/Violence", value=st.session_state.safety_settings["gore"])
+        current_prof = st.checkbox("Allow Profanity", value=st.session_state.safety_settings["profanity"])
         
         st.info("Changes will only apply when you click Save.")
         
@@ -163,11 +166,11 @@ def open_advanced_options():
         )
         st.divider()
         
-        # Use form_submit_button for the real action
-        if st.form_submit_button("💾 Save Changes", type="primary", use_container_width=True):
-            st.session_state.safety_settings["nsfw"] = new_nsfw
-            st.session_state.safety_settings["gore"] = new_gore
-            st.session_state.safety_settings["profanity"] = new_prof
+        # Updated Icon
+        if st.form_submit_button(":material/check_circle: Save Changes", type="primary", use_container_width=True):
+            st.session_state.safety_settings["nsfw"] = current_nsfw
+            st.session_state.safety_settings["gore"] = current_gore
+            st.session_state.safety_settings["profanity"] = current_prof
             st.rerun()
 
 # --- MAIN APP LOGIC ---
@@ -220,30 +223,33 @@ if "active_video_path" in st.session_state:
             c1, c2, c3, c4 = st.columns(4)
             
             with c1:
-                if st.button("📝 Subtitles", use_container_width=True):
+                # Updated Icon
+                if st.button(":material/subtitles: Subtitles", use_container_width=True):
                     open_subtitle_window()
             
             with c2:
-                if st.button("📍 Smart Chapters", use_container_width=True):
+                # Updated Icon
+                if st.button(":material/segment: Smart Chapters", use_container_width=True):
                     with st.spinner("Analyzing Narrative Arc..."):
                         st.session_state.chapters = weltengine.generate_smart_chapters(api_key, st.session_state.active_video_path)
                         st.rerun()
             
             with c3:
-                label = "🤖 Close Assistant" if st.session_state.show_assistant else "🤖 VX Assistant"
+                # Updated Icons
+                label = ":material/close: Close Assistant" if st.session_state.show_assistant else ":material/smart_toy: VX Assistant"
                 type_color = "secondary" if st.session_state.show_assistant else "primary"
                 if st.button(label, type=type_color, use_container_width=True):
                     st.session_state.show_assistant = not st.session_state.show_assistant
                     st.rerun()
             
             with c4:
-                # NEW: Increment form ID before opening options to force a UI reset
-                if st.button("⚙️ Options", use_container_width=True):
+                # Updated Icon
+                if st.button(":material/settings: Options", use_container_width=True):
                     st.session_state.form_reset_id += 1 
                     open_advanced_options()
 
         if st.session_state.chapters:
-            st.markdown("#### 📖 Chapters")
+            st.markdown("#### :material/menu_book: Chapters") # Updated Icon
             with st.container(height=200):
                 for ts, title in st.session_state.chapters:
                     if st.button(f"{ts} - {title}", key=ts, use_container_width=True):
@@ -255,38 +261,38 @@ if "active_video_path" in st.session_state:
     if st.session_state.show_assistant:
         with col_assist:
             h1, h2 = st.columns([3, 1])
-            with h1: st.markdown("#### VX Assistant")
+            with h1: st.markdown("#### Assistant")
             with h2: 
-                if st.button("🗑️", help="Clear Chat"):
+                # Updated Icon
+                if st.button(":material/delete:", help="Clear Chat"):
                     st.session_state.messages = []
                     st.rerun()
             
             chat_box = st.container(height=500)
             
             # --- 1. CHAT RENDER LOOP ---
-            # If empty, show chips. If used, show history.
             if not st.session_state.messages:
                 with chat_box:
                     st.info("I can help you navigate, fix errors, or answer questions.")
                     
-                    # --- FIXED CHIP LOGIC: Append & Rerun ---
+                    # --- CLEAN TEXT CHIPS (Removed Emojis) ---
                     sc1, sc2 = st.columns(2)
                     with sc1:
-                        if st.button("🎬 Find Action", use_container_width=True):
+                        if st.button("Action Scan", use_container_width=True):
                             st.session_state.messages.append({"role": "user", "content": "Find the most exciting action scene."})
                             st.rerun()
                     with sc2:
-                        if st.button("🛡️ Safety Scan", use_container_width=True):
+                        if st.button("Safety Scan", use_container_width=True):
                             st.session_state.messages.append({"role": "user", "content": "Scan for any restricted content."})
                             st.rerun()
                     
                     sc3, sc4 = st.columns(2)
                     with sc3:
-                         if st.button("📝 Recap Arc", use_container_width=True):
+                         if st.button("Recap Arc", use_container_width=True):
                             st.session_state.messages.append({"role": "user", "content": "Summarize the key events so far."})
                             st.rerun()
                     with sc4:
-                         if st.button("🔧 Fix Subs", use_container_width=True):
+                         if st.button("Repair Subs", use_container_width=True):
                             st.session_state.messages.append({"role": "user", "content": "Check the subtitles for any spelling errors."})
                             st.rerun()
             else:
@@ -295,14 +301,11 @@ if "active_video_path" in st.session_state:
                         with st.chat_message(msg["role"]): st.markdown(msg["content"])
             
             # --- 2. INPUT HANDLER ---
-            # Captures typed input and appends to history
             if prompt := st.chat_input("Ask Welt..."):
                 st.session_state.messages.append({"role": "user", "content": prompt})
                 st.rerun()
 
-            # --- 3. BACKEND TRIGGER (The "Brain") ---
-            # This runs AFTER a rerun if the last message was from the User.
-            # Covers BOTH typed input AND clicked chips.
+            # --- 3. BACKEND TRIGGER ---
             if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
                  with chat_box:
                     with st.chat_message("assistant"):
@@ -348,7 +351,6 @@ if "active_video_path" in st.session_state:
                                     st.session_state.video_start_time = sec
                                     final_msg = f"🎥 **Jumped to {ts}**: {desc}"
                                     
-                                    # Special case: Append & Rerun immediately to update player
                                     st.session_state.messages.append({"role": "assistant", "content": final_msg})
                                     st.rerun()
                                     
