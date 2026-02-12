@@ -180,7 +180,7 @@ st.subheader("Studio")
 MASTER_DEMO_PATH = "master_demo.webm" 
 WORKING_VIDEO_PATH = "temp_video.mp4" 
 
-uploaded_file = st.file_uploader("Upload Video", type=["mp4", "mov", "avi", "webm"], label_visibility="collapsed")
+uploaded_file = st.file_uploader("Upload Video", type=["mp4", "mov", "avi", "webm"],help="Streamlit Upload limit: 200MB. For higher upload limits (500MB) please run on local device", label_visibility="collapsed")
 use_demo = False
 if os.path.exists(MASTER_DEMO_PATH):
     use_demo = st.checkbox("Or use the pre-loaded Demo Video")
